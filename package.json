@@ -1,0 +1,25 @@
+{
+  "name": "survival-city-2016",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://joleary@github.com/jdoleary/SurvivalCity2016.git"
+  },
+  "author": "Jordan O'Leary (jdoleary@gmail.com)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jdoleary/SurvivalCity2016/issues"
+  },
+  "homepage": "https://github.com/jdoleary/SurvivalCity2016#readme",
+  "devDependencies": {
+    "browser-sync": "^2.16.0",
+    "browserify": "^13.1.0",
+    "gulp": "^3.9.1",
+    "gulp-browserify": "^0.5.1"
+  }
+}
