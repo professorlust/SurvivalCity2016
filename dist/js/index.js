@@ -15,6 +15,63 @@ module.exports = {
 };
 },{}],2:[function(require,module,exports){
 var Util = require('./Util.js');
+function Gun() {
+  this.reloadTime = 2000;
+  this.fireSpeed = 300;
+  this.shotsPerClip = 6;
+  this.shotsRemaining = this.shotsPerClip;
+  this.reloading = false;
+  this.readyForNextShot = true;
+  this.waitingForNextShot = false;
+  this.accuracy = 0.5;
+}
+Gun.prototype.shoot = function(killable){
+  if(this.shotsRemaining > 0){
+    this.shotsRemaining--;
+    var chance = Util.getRandomFloat(0,1);
+    //console.log('shots fired: ' + chance + '/1');
+    if(chance <= this.accuracy){
+      console.log('shot hit!');
+      killable.die();
+    }else{
+      console.log('shot miss!');
+    }
+  }else{
+    this.reload();
+  }
+}
+Gun.prototype.tryShoot = function(killable){
+  if(!this.waitingForNextShot){
+    //actually take a shot:
+    this.shoot(killable);
+    //start waiting for next shot:
+    this.waitingForNextShot = true;
+    this.timeWhenReadyForNextShot = (new Date()).getTime() + this.fireSpeed;
+  }else{
+    //is it ready for next shot:
+    if((new Date()).getTime() >= this.timeWhenReadyForNextShot){
+      this.waitingForNextShot = false;
+    }
+  }
+  
+}
+Gun.prototype.reload = function(){
+  if(!this.reloading){
+    console.log('reloading');
+    this.reloading = true;
+    this.timeWhenDoneReloading = (new Date()).getTime() + this.reloadTime;
+  }else{
+    if((new Date()).getTime() >= this.timeWhenDoneReloading){
+      console.log('doneReloading');
+      this.reloading = false;
+      this.shotsRemaining = this.shotsPerClip;
+    }
+  }
+  
+}
+module.exports = Gun;
+},{"./Util.js":4}],3:[function(require,module,exports){
+var Util = require('./Util.js');
 var Globals = require('./Globals.js');
 function Unit(color, speed) {
   var spawn = Util.randSpawn();
@@ -33,8 +90,18 @@ function Unit(color, speed) {
     orbit:2
   }
   this.lungeTarget = null;
-
+  this.alive = true;
+  this.distanceToClosestEnemy = null;
+  this.closestEnemy = null;
+  this.weapon = null;
 }
+Unit.prototype.die = function(){
+  this.color = '#000';
+  this.alive = false;
+}
+//
+// Movement
+//
 Unit.prototype.moveAway = function(){
   if (!this.target) {
     return;
@@ -129,6 +196,18 @@ Unit.prototype.moveLerp = function() {
   this.x += dX / dH * this.speed * speedMod;
   this.y += dY / dH * this.speed * speedMod;
 }
+
+//
+// Combat
+//
+Unit.prototype.shoot = function(killable) {
+  if(this.weapon && killable){
+    this.weapon.tryShoot(killable);
+  }
+}
+//
+// Util
+//
 Unit.prototype.draw = function() {
   var centerX = this.x;
   var centerY = this.y;
@@ -159,7 +238,7 @@ Unit.prototype.getDistance = function(unit) {
  
 // export (expose) foo to other modules
 module.exports = Unit;
-},{"./Globals.js":1,"./Util.js":3}],3:[function(require,module,exports){
+},{"./Globals.js":1,"./Util.js":4}],4:[function(require,module,exports){
 
 var Globals = require('./Globals.js');
 function Util(){var a = 'test';return a;}
@@ -183,10 +262,15 @@ Util.findTangentSlope = function(x,y,clockwise){
     return {x:y,y:-x};
   }
 }
+Util.distance = function(p1,p2){
+  return Math.sqrt( (p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y) );
+};
 module.exports = Util;
-},{"./Globals.js":1}],4:[function(require,module,exports){
+},{"./Globals.js":1}],5:[function(require,module,exports){
 var Unit = require('./Unit.js');
+var Util = require('./Util.js');
 var Globals = require('./Globals.js');
+var Gun = require('./Gun.js');
 (function() {
 
   // resize the canvas to fill browser window dynamically
@@ -208,37 +292,62 @@ var Globals = require('./Globals.js');
 
   var h = new Unit('#00ff00', Globals.heroSpeed);
   h.target = Globals.mouse;
+  h.weapon = new Gun();
   var es = [];
   for (var i = 0; i < Globals.numberOfEs; i++) {
     var unit = new Unit('#ff0000', Globals.enemySpeed);
     es.push(unit);
+  }
+  
+  function shittyFindNearEnemy(unit){
+    unit.closestEnemy = null;
+    for (var i = es.length - 1; i >= 0 ; i--) {
+      var e = es[i];
+      if(e.alive){
+        var dist = Util.distance(unit,e);
+        if(!unit.closestEnemy){
+          unit.closestEnemy = e;
+          unit.distanceToClosestEnemy = dist;
+        }else{
+          if(dist < unit.distanceToClosestEnemy){
+            unit.closestEnemy = e;
+            unit.distanceToClosestEnemy = dist;
+          }
+        }
+      }
+    }
   }
 
   function drawLoop() {
     stats.begin();
     Globals.context.clearRect(0, 0, Globals.canvas.width, Globals.canvas.height);
     h.moveLerp();
+    shittyFindNearEnemy(h);
+    h.shoot(h.closestEnemy);
     for (var i = es.length - 1; i >= 0 ; i--) {
       var e = es[i];
-      if (e.getDistance(h) < Globals.chaseDistance) {
-        e.target = h;
-        e.chasing = true;
-        e.color = '#ff0000';
-        if(e.getDistance(h) < Globals.killDist){
-          e.color = '#000';
-          e.lungeTarget = {x:0,y:0};
-          //es.splice(i, 1);
+      if(e.alive){
+        if (e.getDistance(h) < Globals.chaseDistance) {
+          e.target = h;
+          e.chasing = true;
+          e.color = '#ff0000';
+          // enemy is touching hero:
+          if(e.getDistance(h) < Globals.killDist){
+            //e.die();
+            //remove:
+            //es.splice(i, 1);
+          }
+        } else {
+          e.color = '#ffa500';
+          if (e.chasing) {
+            e.target = null;
+            e.chasing = false;
+          }
+          e.findWanderPoint(200);
+          e.moveState = e.moveStates.to;
         }
-      } else {
-        e.color = '#ffa500';
-        if (e.chasing) {
-          e.target = null;
-          e.chasing = false;
-        }
-        e.findWanderPoint(200);
-        e.moveState = e.moveStates.to;
+        e.move();
       }
-      e.move();
       e.draw();
     }
     h.draw();
@@ -258,4 +367,4 @@ var Globals = require('./Globals.js');
 })();
 
 
-},{"./Globals.js":1,"./Unit.js":2}]},{},[4]);
+},{"./Globals.js":1,"./Gun.js":2,"./Unit.js":3,"./Util.js":4}]},{},[5]);

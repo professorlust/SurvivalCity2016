@@ -17,8 +17,18 @@ function Unit(color, speed) {
     orbit:2
   }
   this.lungeTarget = null;
-
+  this.alive = true;
+  this.distanceToClosestEnemy = null;
+  this.closestEnemy = null;
+  this.weapon = null;
 }
+Unit.prototype.die = function(){
+  this.color = '#000';
+  this.alive = false;
+}
+//
+// Movement
+//
 Unit.prototype.moveAway = function(){
   if (!this.target) {
     return;
@@ -113,6 +123,18 @@ Unit.prototype.moveLerp = function() {
   this.x += dX / dH * this.speed * speedMod;
   this.y += dY / dH * this.speed * speedMod;
 }
+
+//
+// Combat
+//
+Unit.prototype.shoot = function(killable) {
+  if(this.weapon && killable){
+    this.weapon.tryShoot(killable);
+  }
+}
+//
+// Util
+//
 Unit.prototype.draw = function() {
   var centerX = this.x;
   var centerY = this.y;
