@@ -1,9 +1,9 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 module.exports = {
-  numberOfEs : 100,
+  numberOfEs : 50,
   chaseDistance : 200,
   moveLerpSensitivity : 300,
-  heroSpeed : 25,
+  heroSpeed : 5,
   enemySpeed : 1,
   killDist : 25,
   canvas : document.getElementById('canvas'),
@@ -83,17 +83,24 @@ function Unit(color, speed) {
   this.lungeSpeed = this.speed * 10;
   this.target = null;
   this.chasing = false;
-  this.moveState = 0;
+  this.moveState = 1;
   this.moveStates = {
     away:0,
     to:1,
     orbit:2
   }
+  this.behavior = 0;
+  this.behaviorStates = {
+    wander:0,
+    chasing:1
+  };
   this.lungeTarget = null;
   this.alive = true;
   this.distanceToClosestEnemy = null;
   this.closestEnemy = null;
   this.weapon = null;
+  // initialize with new target:
+  this.reachedTarget();
 }
 Unit.prototype.die = function(){
   this.color = '#000';
@@ -102,6 +109,18 @@ Unit.prototype.die = function(){
 //
 // Movement
 //
+Unit.prototype.reachedTarget = function(){
+  switch(this.behavior){
+    case this.behaviorStates.wander:
+    // find new wander point
+      this.findWanderPoint(200);
+      this.moveState = this.moveStates.to;
+    break;
+    case this.behaviorStates.chasing:
+    break;
+  }
+  
+}
 Unit.prototype.moveAway = function(){
   if (!this.target) {
     return;
@@ -110,6 +129,7 @@ Unit.prototype.moveAway = function(){
   var dY = this.target.y - this.y;
   if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
     this.target = null;
+    this.reachedTarget();
     return;
   }
   var dH = Math.sqrt(dX * dX + dY * dY);
@@ -127,6 +147,7 @@ Unit.prototype.moveOrbit = function(clockwise){
   dY = tangent.y;
   if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
     this.target = null;
+    this.reachedTarget();
     return;
   }
   var dH = Math.sqrt(dX * dX + dY * dY);
@@ -141,6 +162,7 @@ Unit.prototype.moveTo = function(){
   var dY = this.target.y - this.y;
   if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
     this.target = null;
+    this.reachedTarget();
     return;
   }
   var dH = Math.sqrt(dX * dX + dY * dY);
@@ -180,21 +202,24 @@ Unit.prototype.move = function() {
   }
   this.lunge();
 }
-Unit.prototype.moveLerp = function() {
-  if (!this.target) {
+Unit.prototype.moveLerp = function(extraTarget) {
+  var specialSpeed = 25;
+  if (!extraTarget) {
     return;
   }
-  var dX = this.target.x - this.x;
-  var dY = this.target.y - this.y;
+  var dX = extraTarget.x - this.x;
+  var dY = extraTarget.y - this.y;
   //console.log(dX + ',' + dY);
-  if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
+  if (Math.abs(dX) < specialSpeed && Math.abs(dY) < specialSpeed) {
+    // Do NOT call reached target or null target for moveLerp as it is intended for mouse movement
+    //this.reachedTarget();
     return;
   }
   var dH = Math.sqrt(dX * dX + dY * dY);
   var speedMod = dH / Globals.moveLerpSensitivity;
   speedMod = speedMod > 1 ? 1 : speedMod;
-  this.x += dX / dH * this.speed * speedMod;
-  this.y += dY / dH * this.speed * speedMod;
+  this.x += dX / dH * specialSpeed * speedMod;
+  this.y += dY / dH * specialSpeed * speedMod;
 }
 
 //
@@ -291,7 +316,9 @@ var Gun = require('./Gun.js');
 
 
   var h = new Unit('#00ff00', Globals.heroSpeed);
-  h.target = Globals.mouse;
+  // follow mouse:
+  //h.target = Globals.mouse;
+  h.moveState = h.moveStates.away;
   h.weapon = new Gun();
   var es = [];
   for (var i = 0; i < Globals.numberOfEs; i++) {
@@ -321,30 +348,35 @@ var Gun = require('./Gun.js');
   function drawLoop() {
     stats.begin();
     Globals.context.clearRect(0, 0, Globals.canvas.width, Globals.canvas.height);
-    h.moveLerp();
+    h.moveLerp(Globals.mouse);
     shittyFindNearEnemy(h);
+    h.target = h.closestEnemy;
+    h.move();
     h.shoot(h.closestEnemy);
     for (var i = es.length - 1; i >= 0 ; i--) {
       var e = es[i];
       if(e.alive){
         if (e.getDistance(h) < Globals.chaseDistance) {
+          // in chase range of hero (agro distance)
           e.target = h;
-          e.chasing = true;
+          e.behavior = e.behaviorStates.chasing;
+          //e.chasing = true;
           e.color = '#ff0000';
-          // enemy is touching hero:
           if(e.getDistance(h) < Globals.killDist){
+            // enemy is touching hero:
             //e.die();
             //remove:
             //es.splice(i, 1);
           }
         } else {
+          // out of chase range of hero:
           e.color = '#ffa500';
-          if (e.chasing) {
+          if (e.behavior == e.behaviorStates.chasing) {
             e.target = null;
-            e.chasing = false;
+            e.behavior = e.behaviorStates.wander;
           }
-          e.findWanderPoint(200);
-          e.moveState = e.moveStates.to;
+          //e.findWanderPoint(200);
+          //e.moveState = e.moveStates.to;
         }
         e.move();
       }

@@ -10,17 +10,24 @@ function Unit(color, speed) {
   this.lungeSpeed = this.speed * 10;
   this.target = null;
   this.chasing = false;
-  this.moveState = 0;
+  this.moveState = 1;
   this.moveStates = {
     away:0,
     to:1,
     orbit:2
   }
+  this.behavior = 0;
+  this.behaviorStates = {
+    wander:0,
+    chasing:1
+  };
   this.lungeTarget = null;
   this.alive = true;
   this.distanceToClosestEnemy = null;
   this.closestEnemy = null;
   this.weapon = null;
+  // initialize with new target:
+  this.reachedTarget();
 }
 Unit.prototype.die = function(){
   this.color = '#000';
@@ -29,6 +36,18 @@ Unit.prototype.die = function(){
 //
 // Movement
 //
+Unit.prototype.reachedTarget = function(){
+  switch(this.behavior){
+    case this.behaviorStates.wander:
+    // find new wander point
+      this.findWanderPoint(200);
+      this.moveState = this.moveStates.to;
+    break;
+    case this.behaviorStates.chasing:
+    break;
+  }
+  
+}
 Unit.prototype.moveAway = function(){
   if (!this.target) {
     return;
@@ -37,6 +56,7 @@ Unit.prototype.moveAway = function(){
   var dY = this.target.y - this.y;
   if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
     this.target = null;
+    this.reachedTarget();
     return;
   }
   var dH = Math.sqrt(dX * dX + dY * dY);
@@ -54,6 +74,7 @@ Unit.prototype.moveOrbit = function(clockwise){
   dY = tangent.y;
   if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
     this.target = null;
+    this.reachedTarget();
     return;
   }
   var dH = Math.sqrt(dX * dX + dY * dY);
@@ -68,6 +89,7 @@ Unit.prototype.moveTo = function(){
   var dY = this.target.y - this.y;
   if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
     this.target = null;
+    this.reachedTarget();
     return;
   }
   var dH = Math.sqrt(dX * dX + dY * dY);
@@ -107,21 +129,24 @@ Unit.prototype.move = function() {
   }
   this.lunge();
 }
-Unit.prototype.moveLerp = function() {
-  if (!this.target) {
+Unit.prototype.moveLerp = function(extraTarget) {
+  var specialSpeed = 25;
+  if (!extraTarget) {
     return;
   }
-  var dX = this.target.x - this.x;
-  var dY = this.target.y - this.y;
+  var dX = extraTarget.x - this.x;
+  var dY = extraTarget.y - this.y;
   //console.log(dX + ',' + dY);
-  if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
+  if (Math.abs(dX) < specialSpeed && Math.abs(dY) < specialSpeed) {
+    // Do NOT call reached target or null target for moveLerp as it is intended for mouse movement
+    //this.reachedTarget();
     return;
   }
   var dH = Math.sqrt(dX * dX + dY * dY);
   var speedMod = dH / Globals.moveLerpSensitivity;
   speedMod = speedMod > 1 ? 1 : speedMod;
-  this.x += dX / dH * this.speed * speedMod;
-  this.y += dY / dH * this.speed * speedMod;
+  this.x += dX / dH * specialSpeed * speedMod;
+  this.y += dY / dH * specialSpeed * speedMod;
 }
 
 //

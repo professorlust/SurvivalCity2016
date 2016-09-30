@@ -1,8 +1,8 @@
 module.exports = {
-  numberOfEs : 100,
+  numberOfEs : 50,
   chaseDistance : 200,
   moveLerpSensitivity : 300,
-  heroSpeed : 25,
+  heroSpeed : 5,
   enemySpeed : 1,
   killDist : 25,
   canvas : document.getElementById('canvas'),

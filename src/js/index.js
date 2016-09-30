@@ -22,7 +22,9 @@ var Gun = require('./Gun.js');
 
 
   var h = new Unit('#00ff00', Globals.heroSpeed);
-  h.target = Globals.mouse;
+  // follow mouse:
+  //h.target = Globals.mouse;
+  h.moveState = h.moveStates.away;
   h.weapon = new Gun();
   var es = [];
   for (var i = 0; i < Globals.numberOfEs; i++) {
@@ -52,30 +54,35 @@ var Gun = require('./Gun.js');
   function drawLoop() {
     stats.begin();
     Globals.context.clearRect(0, 0, Globals.canvas.width, Globals.canvas.height);
-    h.moveLerp();
+    h.moveLerp(Globals.mouse);
     shittyFindNearEnemy(h);
+    h.target = h.closestEnemy;
+    h.move();
     h.shoot(h.closestEnemy);
     for (var i = es.length - 1; i >= 0 ; i--) {
       var e = es[i];
       if(e.alive){
         if (e.getDistance(h) < Globals.chaseDistance) {
+          // in chase range of hero (agro distance)
           e.target = h;
-          e.chasing = true;
+          e.behavior = e.behaviorStates.chasing;
+          //e.chasing = true;
           e.color = '#ff0000';
-          // enemy is touching hero:
           if(e.getDistance(h) < Globals.killDist){
+            // enemy is touching hero:
             //e.die();
             //remove:
             //es.splice(i, 1);
           }
         } else {
+          // out of chase range of hero:
           e.color = '#ffa500';
-          if (e.chasing) {
+          if (e.behavior == e.behaviorStates.chasing) {
             e.target = null;
-            e.chasing = false;
+            e.behavior = e.behaviorStates.wander;
           }
-          e.findWanderPoint(200);
-          e.moveState = e.moveStates.to;
+          //e.findWanderPoint(200);
+          //e.moveState = e.moveStates.to;
         }
         e.move();
       }
