@@ -39,7 +39,8 @@ var Globals = require('./Globals.js');
         e.color = '#ff0000';
         if(e.getDistance(h) < Globals.killDist){
           e.color = '#000';
-          es.splice(i, 1);
+          e.lungeTarget = {x:0,y:0};
+          //es.splice(i, 1);
         }
       } else {
         e.color = '#ffa500';

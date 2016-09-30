@@ -7,6 +7,7 @@ function Unit(color, speed) {
   this.color = color || '#ff0000';
   this.radius = 10;
   this.speed = speed || 2;
+  this.lungeSpeed = this.speed * 10;
   this.target = null;
   this.chasing = false;
   this.moveState = 0;
@@ -15,6 +16,7 @@ function Unit(color, speed) {
     to:1,
     orbit:2
   }
+  this.lungeTarget = null;
 
 }
 Unit.prototype.moveAway = function(){
@@ -63,8 +65,25 @@ Unit.prototype.moveTo = function(){
   this.y += dY / dH * this.speed;
   
 }
+// Copy of moveLerp:
+Unit.prototype.lunge = function() {
+  if (!this.lungeTarget) {
+    return;
+  }
+  var dX = this.lungeTarget.x - this.x;
+  var dY = this.lungeTarget.y - this.y;
+  //Reached target
+  if (Math.abs(dX) < this.lungeSpeed && Math.abs(dY) < this.lungeSpeed) {
+    this.lungeTarget = null;
+    return;
+  }
+  var dH = Math.sqrt(dX * dX + dY * dY);
+  var speedMod = dH / Globals.moveLerpSensitivity;
+  speedMod = speedMod > 1 ? 1 : speedMod;
+  this.x += dX / dH * this.lungeSpeed * speedMod;
+  this.y += dY / dH * this.lungeSpeed * speedMod;
+}
 Unit.prototype.move = function() {
-  debugger;
   switch(this.moveState){
     case this.moveStates.away:
       this.moveAway();
@@ -75,8 +94,8 @@ Unit.prototype.move = function() {
     case this.moveStates.orbit:
       this.moveOrbit();
     break;
-    
   }
+  this.lunge();
 }
 Unit.prototype.moveLerp = function() {
   if (!this.target) {
