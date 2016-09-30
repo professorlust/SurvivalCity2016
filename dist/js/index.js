@@ -11,7 +11,8 @@ module.exports = {
   mouse : {
     x: 0,
     y: 0
-  }
+  },
+  lastClick : null
 };
 },{}],2:[function(require,module,exports){
 var Util = require('./Util.js');
@@ -82,7 +83,6 @@ function Unit(color, speed) {
   this.speed = speed || 2;
   this.lungeSpeed = this.speed * 10;
   this.target = null;
-  this.chasing = false;
   this.moveState = 1;
   this.moveStates = {
     away:0,
@@ -92,7 +92,7 @@ function Unit(color, speed) {
   this.behavior = 0;
   this.behaviorStates = {
     wander:0,
-    chasing:1
+    chase:1
   };
   this.lungeTarget = null;
   this.alive = true;
@@ -116,7 +116,7 @@ Unit.prototype.reachedTarget = function(){
       this.findWanderPoint(200);
       this.moveState = this.moveStates.to;
     break;
-    case this.behaviorStates.chasing:
+    case this.behaviorStates.chase:
     break;
   }
   
@@ -203,16 +203,17 @@ Unit.prototype.move = function() {
   this.lunge();
 }
 Unit.prototype.moveLerp = function(extraTarget) {
-  var specialSpeed = 25;
+  var specialSpeed = 20;
   if (!extraTarget) {
     return;
   }
   var dX = extraTarget.x - this.x;
   var dY = extraTarget.y - this.y;
   //console.log(dX + ',' + dY);
-  if (Math.abs(dX) < specialSpeed && Math.abs(dY) < specialSpeed) {
+  if (Math.abs(dX) < specialSpeed*2 && Math.abs(dY) < specialSpeed*2) {
     // Do NOT call reached target or null target for moveLerp as it is intended for mouse movement
     //this.reachedTarget();
+    Globals.lastClick = null;
     return;
   }
   var dH = Math.sqrt(dX * dX + dY * dY);
@@ -290,6 +291,20 @@ Util.findTangentSlope = function(x,y,clockwise){
 Util.distance = function(p1,p2){
   return Math.sqrt( (p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y) );
 };
+Util.drawCirc = function(x,y,color) {
+  var centerX = x;
+  var centerY = y;
+  var radius = 4;
+
+  Globals.context.beginPath();
+  Globals.context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+  Globals.context.fillStyle = color;
+  Globals.context.fill();
+  Globals.context.lineWidth = 2;
+  Globals.context.strokeStyle = '#003300';
+  Globals.context.stroke();
+
+}
 module.exports = Util;
 },{"./Globals.js":1}],5:[function(require,module,exports){
 var Unit = require('./Unit.js');
@@ -305,6 +320,14 @@ var Gun = require('./Gun.js');
     Globals.mouse.x = evt.clientX - rect.left;
     Globals.mouse.y = evt.clientY - rect.top;
   }, false);
+  Globals.canvas.addEventListener('click', function(evt) {
+    var rect = Globals.canvas.getBoundingClientRect();
+    Globals.lastClick = {
+      x: evt.clientX - rect.left,
+      y: evt.clientY - rect.top
+    };
+    console.log(lastClick);
+  }, false);
 
   function resizeCanvas() {
     Globals.canvas.width = window.innerWidth;
@@ -318,6 +341,7 @@ var Gun = require('./Gun.js');
   var h = new Unit('#00ff00', Globals.heroSpeed);
   // follow mouse:
   //h.target = Globals.mouse;
+  h.behavior = h .behaviorStates.chase;
   h.moveState = h.moveStates.away;
   h.weapon = new Gun();
   var es = [];
@@ -348,7 +372,7 @@ var Gun = require('./Gun.js');
   function drawLoop() {
     stats.begin();
     Globals.context.clearRect(0, 0, Globals.canvas.width, Globals.canvas.height);
-    h.moveLerp(Globals.mouse);
+    h.moveLerp(Globals.lastClick);
     shittyFindNearEnemy(h);
     h.target = h.closestEnemy;
     h.move();
@@ -359,7 +383,7 @@ var Gun = require('./Gun.js');
         if (e.getDistance(h) < Globals.chaseDistance) {
           // in chase range of hero (agro distance)
           e.target = h;
-          e.behavior = e.behaviorStates.chasing;
+          e.behavior = e.behaviorStates.chase;
           //e.chasing = true;
           e.color = '#ff0000';
           if(e.getDistance(h) < Globals.killDist){
@@ -371,7 +395,7 @@ var Gun = require('./Gun.js');
         } else {
           // out of chase range of hero:
           e.color = '#ffa500';
-          if (e.behavior == e.behaviorStates.chasing) {
+          if (e.behavior == e.behaviorStates.chase) {
             e.target = null;
             e.behavior = e.behaviorStates.wander;
           }
@@ -383,6 +407,9 @@ var Gun = require('./Gun.js');
       e.draw();
     }
     h.draw();
+    if(h.target){
+      Util.drawCirc(h.target.x,h.target.y,'#0000ff');
+    }
     stats.end();
     requestAnimationFrame(drawLoop);
   }

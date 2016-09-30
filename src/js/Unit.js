@@ -9,7 +9,6 @@ function Unit(color, speed) {
   this.speed = speed || 2;
   this.lungeSpeed = this.speed * 10;
   this.target = null;
-  this.chasing = false;
   this.moveState = 1;
   this.moveStates = {
     away:0,
@@ -19,7 +18,7 @@ function Unit(color, speed) {
   this.behavior = 0;
   this.behaviorStates = {
     wander:0,
-    chasing:1
+    chase:1
   };
   this.lungeTarget = null;
   this.alive = true;
@@ -43,7 +42,7 @@ Unit.prototype.reachedTarget = function(){
       this.findWanderPoint(200);
       this.moveState = this.moveStates.to;
     break;
-    case this.behaviorStates.chasing:
+    case this.behaviorStates.chase:
     break;
   }
   
@@ -130,16 +129,17 @@ Unit.prototype.move = function() {
   this.lunge();
 }
 Unit.prototype.moveLerp = function(extraTarget) {
-  var specialSpeed = 25;
+  var specialSpeed = 20;
   if (!extraTarget) {
     return;
   }
   var dX = extraTarget.x - this.x;
   var dY = extraTarget.y - this.y;
   //console.log(dX + ',' + dY);
-  if (Math.abs(dX) < specialSpeed && Math.abs(dY) < specialSpeed) {
+  if (Math.abs(dX) < specialSpeed*2 && Math.abs(dY) < specialSpeed*2) {
     // Do NOT call reached target or null target for moveLerp as it is intended for mouse movement
     //this.reachedTarget();
+    Globals.lastClick = null;
     return;
   }
   var dH = Math.sqrt(dX * dX + dY * dY);

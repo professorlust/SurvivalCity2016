@@ -10,5 +10,6 @@ module.exports = {
   mouse : {
     x: 0,
     y: 0
-  }
+  },
+  lastClick : null
 };

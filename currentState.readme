@@ -1,0 +1,4 @@
+Enemies chase hero.
+Hero will avoid closest enemy.
+Hero auto shoots at closest enemy.
+Hero will go to where you click while avoiding enemy.

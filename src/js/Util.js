@@ -24,4 +24,18 @@ Util.findTangentSlope = function(x,y,clockwise){
 Util.distance = function(p1,p2){
   return Math.sqrt( (p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y) );
 };
+Util.drawCirc = function(x,y,color) {
+  var centerX = x;
+  var centerY = y;
+  var radius = 4;
+
+  Globals.context.beginPath();
+  Globals.context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+  Globals.context.fillStyle = color;
+  Globals.context.fill();
+  Globals.context.lineWidth = 2;
+  Globals.context.strokeStyle = '#003300';
+  Globals.context.stroke();
+
+}
 module.exports = Util;

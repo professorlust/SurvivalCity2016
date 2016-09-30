@@ -11,6 +11,14 @@ var Gun = require('./Gun.js');
     Globals.mouse.x = evt.clientX - rect.left;
     Globals.mouse.y = evt.clientY - rect.top;
   }, false);
+  Globals.canvas.addEventListener('click', function(evt) {
+    var rect = Globals.canvas.getBoundingClientRect();
+    Globals.lastClick = {
+      x: evt.clientX - rect.left,
+      y: evt.clientY - rect.top
+    };
+    console.log(lastClick);
+  }, false);
 
   function resizeCanvas() {
     Globals.canvas.width = window.innerWidth;
@@ -24,6 +32,7 @@ var Gun = require('./Gun.js');
   var h = new Unit('#00ff00', Globals.heroSpeed);
   // follow mouse:
   //h.target = Globals.mouse;
+  h.behavior = h .behaviorStates.chase;
   h.moveState = h.moveStates.away;
   h.weapon = new Gun();
   var es = [];
@@ -54,7 +63,7 @@ var Gun = require('./Gun.js');
   function drawLoop() {
     stats.begin();
     Globals.context.clearRect(0, 0, Globals.canvas.width, Globals.canvas.height);
-    h.moveLerp(Globals.mouse);
+    h.moveLerp(Globals.lastClick);
     shittyFindNearEnemy(h);
     h.target = h.closestEnemy;
     h.move();
@@ -65,7 +74,7 @@ var Gun = require('./Gun.js');
         if (e.getDistance(h) < Globals.chaseDistance) {
           // in chase range of hero (agro distance)
           e.target = h;
-          e.behavior = e.behaviorStates.chasing;
+          e.behavior = e.behaviorStates.chase;
           //e.chasing = true;
           e.color = '#ff0000';
           if(e.getDistance(h) < Globals.killDist){
@@ -77,7 +86,7 @@ var Gun = require('./Gun.js');
         } else {
           // out of chase range of hero:
           e.color = '#ffa500';
-          if (e.behavior == e.behaviorStates.chasing) {
+          if (e.behavior == e.behaviorStates.chase) {
             e.target = null;
             e.behavior = e.behaviorStates.wander;
           }
@@ -89,6 +98,9 @@ var Gun = require('./Gun.js');
       e.draw();
     }
     h.draw();
+    if(h.target){
+      Util.drawCirc(h.target.x,h.target.y,'#0000ff');
+    }
     stats.end();
     requestAnimationFrame(drawLoop);
   }
