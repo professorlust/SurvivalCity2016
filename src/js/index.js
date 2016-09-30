@@ -30,7 +30,7 @@ var Globals = require('./Globals.js');
   function drawLoop() {
     stats.begin();
     Globals.context.clearRect(0, 0, Globals.canvas.width, Globals.canvas.height);
-    h.moveLerp(h.target);
+    h.moveLerp();
     for (var i = es.length - 1; i >= 0 ; i--) {
       var e = es[i];
       if (e.getDistance(h) < Globals.chaseDistance) {
@@ -48,8 +48,9 @@ var Globals = require('./Globals.js');
           e.chasing = false;
         }
         e.findWanderPoint(200);
+        e.moveState = e.moveStates.to;
       }
-      e.move(e.target);
+      e.move();
       e.draw();
     }
     h.draw();

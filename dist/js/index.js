@@ -25,15 +25,37 @@ function Unit(color, speed) {
   this.speed = speed || 2;
   this.target = null;
   this.chasing = false;
+  this.moveState = 0;
+  this.moveStates = {
+    away:0,
+    to:1,
+    orbit:2
+  }
 
 }
-Unit.prototype.move = function(target) {
-  if (!target) {
+Unit.prototype.moveAway = function(){
+  if (!this.target) {
     return;
   }
-  var dX = target.x - this.x;
-  var dY = target.y - this.y;
-  //console.log(dX + ',' + dY);
+  var dX = this.target.x - this.x;
+  var dY = this.target.y - this.y;
+  if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
+    this.target = null;
+    return;
+  }
+  var dH = Math.sqrt(dX * dX + dY * dY);
+  this.x -= dX / dH * this.speed;
+  this.y -= dY / dH * this.speed;
+}
+Unit.prototype.moveOrbit = function(clockwise){
+  if (!this.target) {
+    return;
+  }
+  var dX = this.target.x - this.x;
+  var dY = this.target.y - this.y;
+  var tangent = Util.findTangentSlope(dX,dY,clockwise);
+  dX = tangent.x;
+  dY = tangent.y;
   if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
     this.target = null;
     return;
@@ -42,12 +64,42 @@ Unit.prototype.move = function(target) {
   this.x += dX / dH * this.speed;
   this.y += dY / dH * this.speed;
 }
-Unit.prototype.moveLerp = function(target) {
-  if (!target) {
+Unit.prototype.moveTo = function(){
+  if (!this.target) {
     return;
   }
-  var dX = target.x - this.x;
-  var dY = target.y - this.y;
+  var dX = this.target.x - this.x;
+  var dY = this.target.y - this.y;
+  if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
+    this.target = null;
+    return;
+  }
+  var dH = Math.sqrt(dX * dX + dY * dY);
+  this.x += dX / dH * this.speed;
+  this.y += dY / dH * this.speed;
+  
+}
+Unit.prototype.move = function() {
+  debugger;
+  switch(this.moveState){
+    case this.moveStates.away:
+      this.moveAway();
+    break;
+    case this.moveStates.to:
+      this.moveTo();
+    break;
+    case this.moveStates.orbit:
+      this.moveOrbit();
+    break;
+    
+  }
+}
+Unit.prototype.moveLerp = function() {
+  if (!this.target) {
+    return;
+  }
+  var dX = this.target.x - this.x;
+  var dY = this.target.y - this.y;
   //console.log(dX + ',' + dY);
   if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
     return;
@@ -104,6 +156,14 @@ Util.randSpawn = function() {
 Util.getRandomFloat = function(min, max) {
   return Math.random() * (max - min) + min;
 }
+
+Util.findTangentSlope = function(x,y,clockwise){
+  if(clockwise){
+    return {x:-y,y:x};
+  }else{
+    return {x:y,y:-x};
+  }
+}
 module.exports = Util;
 },{"./Globals.js":1}],4:[function(require,module,exports){
 var Unit = require('./Unit.js');
@@ -138,7 +198,7 @@ var Globals = require('./Globals.js');
   function drawLoop() {
     stats.begin();
     Globals.context.clearRect(0, 0, Globals.canvas.width, Globals.canvas.height);
-    h.moveLerp(h.target);
+    h.moveLerp();
     for (var i = es.length - 1; i >= 0 ; i--) {
       var e = es[i];
       if (e.getDistance(h) < Globals.chaseDistance) {
@@ -156,8 +216,9 @@ var Globals = require('./Globals.js');
           e.chasing = false;
         }
         e.findWanderPoint(200);
+        e.moveState = e.moveStates.to;
       }
-      e.move(e.target);
+      e.move();
       e.draw();
     }
     h.draw();

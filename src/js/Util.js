@@ -13,4 +13,12 @@ Util.randSpawn = function() {
 Util.getRandomFloat = function(min, max) {
   return Math.random() * (max - min) + min;
 }
+
+Util.findTangentSlope = function(x,y,clockwise){
+  if(clockwise){
+    return {x:-y,y:x};
+  }else{
+    return {x:y,y:-x};
+  }
+}
 module.exports = Util;
