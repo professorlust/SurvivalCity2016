@@ -1,132 +1,151 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-require('./test.js');
-(function() {
-  var canvas = document.getElementById('canvas'),
-    context = canvas.getContext('2d');
-  var mouse = {
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+module.exports = {
+  numberOfEs : 100,
+  chaseDistance : 200,
+  moveLerpSensitivity : 300,
+  heroSpeed : 25,
+  enemySpeed : 1,
+  killDist : 25,
+  canvas : document.getElementById('canvas'),
+  context : document.getElementById('canvas').getContext('2d'),
+  mouse : {
     x: 0,
     y: 0
-  };
-  var numberOfEs = 100;
-  var chaseDistance = 200;
-  var moveLerpSensitivity = 300;
-  var heroSpeed = 25;
-  var enemySpeed = 1;
-  var killDist = 25;
-
-  // resize the canvas to fill browser window dynamically
-  window.addEventListener('resize', resizeCanvas, false);
-  canvas.addEventListener('mousemove', function(evt) {
-    var rect = canvas.getBoundingClientRect();
-    mouse.x = evt.clientX - rect.left;
-    mouse.y = evt.clientY - rect.top;
-  }, false);
-
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
   }
-  resizeCanvas();
+};
+},{}],2:[function(require,module,exports){
+var Util = require('./Util.js');
+var Globals = require('./Globals.js');
+function Unit(color, speed) {
+  var spawn = Util.randSpawn();
+  this.x = spawn.x;
+  this.y = spawn.y;
+  this.color = color || '#ff0000';
+  this.radius = 10;
+  this.speed = speed || 2;
+  this.target = null;
+  this.chasing = false;
 
-  function Unit(color, speed) {
-    var spawn = randSpawn();
-    this.x = spawn.x;
-    this.y = spawn.y;
-    this.color = color || '#ff0000';
-    this.radius = 10;
-    this.speed = speed || 2;
+}
+Unit.prototype.move = function(target) {
+  if (!target) {
+    return;
+  }
+  var dX = target.x - this.x;
+  var dY = target.y - this.y;
+  //console.log(dX + ',' + dY);
+  if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
     this.target = null;
-    this.chasing = false;
-
+    return;
   }
-  Unit.prototype.move = function(target) {
-    if (!target) {
-      return;
-    }
-    var dX = target.x - this.x;
-    var dY = target.y - this.y;
-    //console.log(dX + ',' + dY);
-    if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
-      this.target = null;
-      return;
-    }
-    var dH = Math.sqrt(dX * dX + dY * dY);
-    this.x += dX / dH * this.speed;
-    this.y += dY / dH * this.speed;
+  var dH = Math.sqrt(dX * dX + dY * dY);
+  this.x += dX / dH * this.speed;
+  this.y += dY / dH * this.speed;
+}
+Unit.prototype.moveLerp = function(target) {
+  if (!target) {
+    return;
   }
-  Unit.prototype.moveLerp = function(target) {
-    if (!target) {
-      return;
-    }
-    var dX = target.x - this.x;
-    var dY = target.y - this.y;
-    //console.log(dX + ',' + dY);
-    if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
-      return;
-    }
-    var dH = Math.sqrt(dX * dX + dY * dY);
-    var speedMod = dH / moveLerpSensitivity;
-    speedMod = speedMod > 1 ? 1 : speedMod;
-    this.x += dX / dH * this.speed * speedMod;
-    this.y += dY / dH * this.speed * speedMod;
+  var dX = target.x - this.x;
+  var dY = target.y - this.y;
+  //console.log(dX + ',' + dY);
+  if (Math.abs(dX) < this.speed && Math.abs(dY) < this.speed) {
+    return;
   }
-  Unit.prototype.draw = function() {
-    var centerX = this.x;
-    var centerY = this.y;
-    var radius = this.radius;
+  var dH = Math.sqrt(dX * dX + dY * dY);
+  var speedMod = dH / Globals.moveLerpSensitivity;
+  speedMod = speedMod > 1 ? 1 : speedMod;
+  this.x += dX / dH * this.speed * speedMod;
+  this.y += dY / dH * this.speed * speedMod;
+}
+Unit.prototype.draw = function() {
+  var centerX = this.x;
+  var centerY = this.y;
+  var radius = this.radius;
 
-    context.beginPath();
-    context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
-    context.fillStyle = this.color;
-    context.fill();
-    context.lineWidth = 2;
-    context.strokeStyle = '#003300';
-    context.stroke();
+  Globals.context.beginPath();
+  Globals.context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+  Globals.context.fillStyle = this.color;
+  Globals.context.fill();
+  Globals.context.lineWidth = 2;
+  Globals.context.strokeStyle = '#003300';
+  Globals.context.stroke();
 
-  }
-  Unit.prototype.findWanderPoint = function(halfDist) {
-    if (!this.target) {
-      this.target = {
-        x: getRandomFloat(this.x - halfDist, this.x + halfDist),
-        y: getRandomFloat(this.y - halfDist, this.y + halfDist)
-      };
-
-    }
-
-  };
-  Unit.prototype.getDistance = function(unit) {
-    return Math.sqrt((this.x - unit.x) * (this.x - unit.x) + (this.y - unit.y) * (this.y - unit.y));
-  }
-
-  function randSpawn() {
-    var x = getRandomFloat(0, canvas.width);
-    var y = getRandomFloat(0, canvas.height);
-    return {
-      x: x,
-      y: y
+}
+Unit.prototype.findWanderPoint = function(halfDist) {
+  if (!this.target) {
+    this.target = {
+      x: Util.getRandomFloat(this.x - halfDist, this.x + halfDist),
+      y: Util.getRandomFloat(this.y - halfDist, this.y + halfDist)
     };
 
   }
 
-  var h = new Unit('#00ff00', heroSpeed);
-  h.target = mouse;
+};
+Unit.prototype.getDistance = function(unit) {
+  return Math.sqrt((this.x - unit.x) * (this.x - unit.x) + (this.y - unit.y) * (this.y - unit.y));
+}
+ 
+// export (expose) foo to other modules
+module.exports = Unit;
+},{"./Globals.js":1,"./Util.js":3}],3:[function(require,module,exports){
+
+var Globals = require('./Globals.js');
+function Util(){var a = 'test';return a;}
+Util.randSpawn = function() {
+  var x = this.getRandomFloat(0, Globals.canvas.width);
+  var y = this.getRandomFloat(0, Globals.canvas.height);
+  return {
+    x: x,
+    y: y
+  };
+
+}
+Util.getRandomFloat = function(min, max) {
+  return Math.random() * (max - min) + min;
+}
+module.exports = Util;
+},{"./Globals.js":1}],4:[function(require,module,exports){
+var Unit = require('./Unit.js');
+var Globals = require('./Globals.js');
+(function() {
+
+  // resize the canvas to fill browser window dynamically
+  window.addEventListener('resize', resizeCanvas, false);
+  Globals.canvas.addEventListener('mousemove', function(evt) {
+    var rect = Globals.canvas.getBoundingClientRect();
+    Globals.mouse.x = evt.clientX - rect.left;
+    Globals.mouse.y = evt.clientY - rect.top;
+  }, false);
+
+  function resizeCanvas() {
+    Globals.canvas.width = window.innerWidth;
+    Globals.canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+
+  
+
+
+  var h = new Unit('#00ff00', Globals.heroSpeed);
+  h.target = Globals.mouse;
   var es = [];
-  for (var i = 0; i < numberOfEs; i++) {
-    var unit = new Unit('#ff0000', enemySpeed);
+  for (var i = 0; i < Globals.numberOfEs; i++) {
+    var unit = new Unit('#ff0000', Globals.enemySpeed);
     es.push(unit);
   }
 
   function drawLoop() {
     stats.begin();
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    Globals.context.clearRect(0, 0, Globals.canvas.width, Globals.canvas.height);
     h.moveLerp(h.target);
     for (var i = es.length - 1; i >= 0 ; i--) {
       var e = es[i];
-      if (e.getDistance(h) < chaseDistance) {
+      if (e.getDistance(h) < Globals.chaseDistance) {
         e.target = h;
         e.chasing = true;
         e.color = '#ff0000';
-        if(e.getDistance(h) < killDist){
+        if(e.getDistance(h) < Globals.killDist){
           e.color = '#000';
           es.splice(i, 1);
         }
@@ -157,9 +176,5 @@ require('./test.js');
   $("#Stats-output").append(stats.domElement);
 })();
 
-function getRandomFloat(min, max) {
-  return Math.random() * (max - min) + min;
-}
-},{"./test.js":2}],2:[function(require,module,exports){
-alert('modules working');
-},{}]},{},[1])
+
+},{"./Globals.js":1,"./Unit.js":2}]},{},[4]);
