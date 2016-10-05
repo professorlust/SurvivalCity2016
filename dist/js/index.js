@@ -1,18 +1,20 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 module.exports = {
   numberOfEs : 50,
-  chaseDistance : 200,
+  chaseDistance : 100,
   moveLerpSensitivity : 300,
-  heroSpeed : 5,
-  enemySpeed : 1,
-  killDist : 25,
+  heroSpeed : 1,
+  enemySpeed : 0.5,
+  killDist : 5,
   canvas : document.getElementById('canvas'),
   context : document.getElementById('canvas').getContext('2d'),
   mouse : {
     x: 0,
     y: 0
   },
-  lastClick : null
+  lastClick : null,
+  loopCount : 0, // how many times the loop has run.
+  margin: 20 // margin for turning off something that has become active due to chase distance for example.
 };
 },{}],2:[function(require,module,exports){
 var Util = require('./Util.js');
@@ -202,6 +204,32 @@ Unit.prototype.move = function() {
   }
   this.lunge();
 }
+Unit.prototype.moveAwayFromClosestEnemies = function(){
+  if(this.closestEnemies && this.closestEnemies.length){
+    var finaldX = 0;
+    var finaldY = 0;
+    // arranged farthest to closest:
+    for(var i = 0; i < this.closestEnemies.length; i++){
+      // closer enemy has more influence:
+      var influence = (i+1)/6;
+      var enemy = this.closestEnemies[i];
+      
+      var dX = this.target.x - this.x;
+      var dY = this.target.y - this.y;
+      finaldX += dX * influence;
+      finaldY += dY * influence;
+      
+    }
+    var dH = Math.sqrt(finaldX * finaldX + finaldY * finaldY);
+    //debug:
+    var debugX = this.x - (finaldX);
+    var debugY = this.y - (finaldY);
+    Util.drawCirc(debugX,debugY,'#ff00ff');
+
+    this.x -= finaldX / dH * this.speed;
+    this.y -= finaldY / dH * this.speed;
+  }
+}
 Unit.prototype.moveLerp = function(extraTarget) {
   var specialSpeed = 20;
   if (!extraTarget) {
@@ -326,7 +354,6 @@ var Gun = require('./Gun.js');
       x: evt.clientX - rect.left,
       y: evt.clientY - rect.top
     };
-    console.log(lastClick);
   }, false);
 
   function resizeCanvas() {
@@ -346,12 +373,15 @@ var Gun = require('./Gun.js');
   h.weapon = new Gun();
   var es = [];
   for (var i = 0; i < Globals.numberOfEs; i++) {
-    var unit = new Unit('#ff0000', Globals.enemySpeed);
+    var unit = new Unit('#ffa500', Globals.enemySpeed);
     es.push(unit);
   }
   
   function shittyFindNearEnemy(unit){
     unit.closestEnemy = null;
+    // find closest three:
+    // note, the closest is the last:
+    unit.closestEnemies = [];
     for (var i = es.length - 1; i >= 0 ; i--) {
       var e = es[i];
       if(e.alive){
@@ -359,12 +389,18 @@ var Gun = require('./Gun.js');
         if(!unit.closestEnemy){
           unit.closestEnemy = e;
           unit.distanceToClosestEnemy = dist;
+          unit.closestEnemies.push(e);
         }else{
           if(dist < unit.distanceToClosestEnemy){
             unit.closestEnemy = e;
             unit.distanceToClosestEnemy = dist;
+            unit.closestEnemies.push(e);
           }
         }
+      }
+      if(unit.closestEnemies.length > 3){
+        // take off the front:
+        unit.closestEnemies.shift();
       }
     }
   }
@@ -373,10 +409,23 @@ var Gun = require('./Gun.js');
     stats.begin();
     Globals.context.clearRect(0, 0, Globals.canvas.width, Globals.canvas.height);
     h.moveLerp(Globals.lastClick);
-    shittyFindNearEnemy(h);
+    // Only sample nearest enemy once out of every 10 loops
+    if(Globals.loopCount%10 == 0){
+      shittyFindNearEnemy(h);
+    }
     h.target = h.closestEnemy;
-    h.move();
-    h.shoot(h.closestEnemy);
+    if(h.closestEnemy){
+      h.moveAwayFromClosestEnemies();
+/*    if(Util.distance(h,h.closestEnemy) <= Globals.chaseDistance){
+        h.moveState = h.moveStates.away;
+      }
+      if(h.moveState == h.moveStates.away && Util.distance(h,h.closestEnemy) <= Globals.chaseDistance + Globals.margin){
+        h.moveAwayFromClosestEnemies();
+      }else{
+        h.moveState = h.moveStates.to;
+      }
+      h.shoot(h.closestEnemy);*/
+    }
     for (var i = es.length - 1; i >= 0 ; i--) {
       var e = es[i];
       if(e.alive){
@@ -393,24 +442,24 @@ var Gun = require('./Gun.js');
             //es.splice(i, 1);
           }
         } else {
-          // out of chase range of hero:
+          /* Don't lose agro
+          // out of chase range of hero (lose agro):
           e.color = '#ffa500';
           if (e.behavior == e.behaviorStates.chase) {
             e.target = null;
             e.behavior = e.behaviorStates.wander;
-          }
-          //e.findWanderPoint(200);
-          //e.moveState = e.moveStates.to;
+          }*/
         }
         e.move();
       }
       e.draw();
     }
     h.draw();
-    if(h.target){
-      Util.drawCirc(h.target.x,h.target.y,'#0000ff');
+    for(var i = 0; i < h.closestEnemies.length; i++){
+      Util.drawCirc(h.closestEnemies[i].x,h.closestEnemies[i].y,'#0000ff');
     }
     stats.end();
+    Globals.loopCount++;
     requestAnimationFrame(drawLoop);
   }
   requestAnimationFrame(drawLoop);

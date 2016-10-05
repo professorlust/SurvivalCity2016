@@ -128,6 +128,32 @@ Unit.prototype.move = function() {
   }
   this.lunge();
 }
+Unit.prototype.moveAwayFromClosestEnemies = function(){
+  if(this.closestEnemies && this.closestEnemies.length){
+    var finaldX = 0;
+    var finaldY = 0;
+    // arranged farthest to closest:
+    for(var i = 0; i < this.closestEnemies.length; i++){
+      // closer enemy has more influence:
+      var influence = (i+1)/6;
+      var enemy = this.closestEnemies[i];
+      
+      var dX = this.target.x - this.x;
+      var dY = this.target.y - this.y;
+      finaldX += dX * influence;
+      finaldY += dY * influence;
+      
+    }
+    var dH = Math.sqrt(finaldX * finaldX + finaldY * finaldY);
+    //debug:
+    var debugX = this.x - (finaldX);
+    var debugY = this.y - (finaldY);
+    Util.drawCirc(debugX,debugY,'#ff00ff');
+
+    this.x -= finaldX / dH * this.speed;
+    this.y -= finaldY / dH * this.speed;
+  }
+}
 Unit.prototype.moveLerp = function(extraTarget) {
   var specialSpeed = 20;
   if (!extraTarget) {
